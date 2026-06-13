@@ -1,0 +1,100 @@
+{
+    "name": "RecepBot 1 - Confirmacion instantanea de citas",
+    "flow": [
+        {
+            "id": 1,
+            "module": "google-calendar:watchEvents",
+            "version": 5,
+            "parameters": {
+                "calendar": "primary",
+                "watch": "created",
+                "limit": 10
+            },
+            "mapper": {},
+            "metadata": {
+                "designer": {"x": 0, "y": 0, "name": "1. Vigilar nuevas citas en el calendario"},
+                "notes": "TRIGGER: Se activa cada vez que se crea una cita nueva en tu Google Calendar. Despues de importar, haz clic aqui y selecciona TU conexion de Google y TU calendario."
+            }
+        },
+        {
+            "id": 2,
+            "module": "openai-gpt-3:CreateCompletion",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "model": "gpt-4o-mini",
+                "select": "chat",
+                "max_tokens": "300",
+                "temperature": "0.7",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "Eres el asistente de un negocio local. Escribe un email breve, calido y profesional en espanol confirmando una cita. Incluye fecha, hora y nombre del servicio. Firma como 'El equipo'. No uses asunto, solo el cuerpo del mensaje."
+                    },
+                    {
+                        "role": "user",
+                        "content": "Confirma esta cita: Servicio: {{1.summary}} | Fecha y hora: {{1.start.dateTime}} | Cliente: {{1.attendees[].displayName}}"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {"x": 300, "y": 0, "name": "2. IA redacta el mensaje de confirmacion"},
+                "notes": "Genera un mensaje personalizado con IA. Necesitas tu clave de OpenAI (la guia te explica como conseguirla). Si no quieres usar IA, puedes BORRAR este modulo y escribir un mensaje fijo en el modulo 3."
+            }
+        },
+        {
+            "id": 3,
+            "module": "google-email:ActionSendEmail",
+            "version": 2,
+            "parameters": {},
+            "mapper": {
+                "to": ["{{1.attendees[].email}}"],
+                "subject": "Tu cita esta confirmada ✅",
+                "contentType": "html",
+                "html": "{{2.choices[].message.content}}"
+            },
+            "metadata": {
+                "designer": {"x": 600, "y": 0, "name": "3. Enviar email de confirmacion"},
+                "notes": "Envia el email al cliente. Conecta aqui TU cuenta de Gmail."
+            }
+        },
+        {
+            "id": 4,
+            "module": "google-sheets:addRow",
+            "version": 2,
+            "parameters": {},
+            "mapper": {
+                "values": {
+                    "0": "{{1.attendees[].displayName}}",
+                    "1": "{{1.attendees[].email}}",
+                    "2": "{{1.start.dateTime}}",
+                    "3": "{{1.summary}}",
+                    "4": "Confirmada",
+                    "5": "{{now}}"
+                },
+                "insertDataOption": "INSERT_ROWS",
+                "valueInputOption": "USER_ENTERED"
+            },
+            "metadata": {
+                "designer": {"x": 900, "y": 0, "name": "4. Apuntar la cita en el CRM (Google Sheets)"},
+                "notes": "Guarda la cita en tu hoja CRM. Selecciona TU conexion de Google, el archivo 'RecepBot CRM' y la pestana 'Citas'."
+            }
+        }
+    ],
+    "metadata": {
+        "instant": false,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "confidential": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {"orphans": []},
+        "zone": "eu1.make.com"
+    }
+}

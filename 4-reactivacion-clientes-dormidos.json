@@ -1,0 +1,110 @@
+{
+    "name": "RecepBot 4 - Reactivar clientes dormidos (60 dias sin venir)",
+    "flow": [
+        {
+            "id": 1,
+            "module": "google-sheets:filterRows",
+            "version": 2,
+            "parameters": {},
+            "mapper": {
+                "sheetId": "Clientes",
+                "includesHeaders": true,
+                "limit": 20,
+                "filter": [
+                    [
+                        {
+                            "a": "D",
+                            "b": "{{formatDate(addDays(now; -60); \"YYYY-MM-DD\")}}",
+                            "o": "date:less"
+                        },
+                        {
+                            "a": "F",
+                            "b": "Activo",
+                            "o": "text:equal"
+                        }
+                    ]
+                ]
+            },
+            "metadata": {
+                "designer": {"x": 0, "y": 0, "name": "1. Buscar clientes que no vienen desde hace 60+ dias"},
+                "notes": "Busca en tu hoja CRM (pestana 'Clientes') a los clientes cuya 'Ultima visita' (columna D) es de hace mas de 60 dias y siguen con estado 'Activo'. Programa este escenario UNA VEZ POR SEMANA (ej. lunes a las 10:00)."
+            }
+        },
+        {
+            "id": 2,
+            "module": "openai-gpt-3:CreateCompletion",
+            "version": 1,
+            "parameters": {},
+            "mapper": {
+                "model": "gpt-4o-mini",
+                "select": "chat",
+                "max_tokens": "300",
+                "temperature": "0.8",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "Eres el asistente de un negocio local. Escribe un email corto, cercano y nada agresivo en espanol para un cliente que hace tiempo que no viene. Menciona su servicio habitual de forma natural y ofrece un 10% de descuento si reserva esta semana. Maximo 80 palabras. Solo el cuerpo del email, sin asunto."
+                    },
+                    {
+                        "role": "user",
+                        "content": "Cliente: {{1.A}} | Servicio habitual: {{1.E}} | Ultima visita: {{1.D}}"
+                    }
+                ]
+            },
+            "metadata": {
+                "designer": {"x": 300, "y": 0, "name": "2. IA escribe una oferta personalizada"},
+                "notes": "La IA redacta un mensaje unico para cada cliente segun su historial. Puedes cambiar el descuento o el tono editando el texto de instrucciones (system)."
+            }
+        },
+        {
+            "id": 3,
+            "module": "google-email:ActionSendEmail",
+            "version": 2,
+            "parameters": {},
+            "mapper": {
+                "to": ["{{1.B}}"],
+                "subject": "Te echamos de menos 💜 (tenemos algo para ti)",
+                "contentType": "html",
+                "html": "{{2.choices[].message.content}}"
+            },
+            "metadata": {
+                "designer": {"x": 600, "y": 0, "name": "3. Enviar la oferta al cliente"},
+                "notes": "Envia el email generado por la IA."
+            }
+        },
+        {
+            "id": 4,
+            "module": "google-sheets:updateRow",
+            "version": 2,
+            "parameters": {},
+            "mapper": {
+                "sheetId": "Clientes",
+                "rowNumber": "{{1.__ROW_NUMBER__}}",
+                "values": {
+                    "6": "{{formatDate(now; \"YYYY-MM-DD\")}}"
+                },
+                "valueInputOption": "USER_ENTERED"
+            },
+            "metadata": {
+                "designer": {"x": 900, "y": 0, "name": "4. Apuntar que ya le hemos escrito"},
+                "notes": "Actualiza la columna 'Ultima campana' (columna G) para no escribir al mismo cliente dos veces."
+            }
+        }
+    ],
+    "metadata": {
+        "instant": false,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "confidential": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {"orphans": []},
+        "zone": "eu1.make.com"
+    }
+}

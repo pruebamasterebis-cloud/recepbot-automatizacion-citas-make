@@ -1,0 +1,76 @@
+{
+    "name": "RecepBot 2 - Recordatorio 24h antes (anti no-show)",
+    "flow": [
+        {
+            "id": 1,
+            "module": "google-calendar:searchEvents",
+            "version": 5,
+            "parameters": {},
+            "mapper": {
+                "calendar": "primary",
+                "timeMin": "{{addHours(now; 23)}}",
+                "timeMax": "{{addHours(now; 25)}}",
+                "singleEvents": true,
+                "orderBy": "startTime",
+                "limit": 50
+            },
+            "metadata": {
+                "designer": {"x": 0, "y": 0, "name": "1. Buscar citas de manana (dentro de 24h)"},
+                "notes": "Busca todas las citas que ocurren dentro de unas 24 horas. IMPORTANTE: este escenario debe programarse para ejecutarse CADA 2 HORAS (icono del reloj en el primer modulo). La guia te explica como."
+            }
+        },
+        {
+            "id": 2,
+            "module": "google-email:ActionSendEmail",
+            "version": 2,
+            "parameters": {},
+            "mapper": {
+                "to": ["{{1.attendees[].email}}"],
+                "subject": "⏰ Recordatorio: tienes una cita manana",
+                "contentType": "html",
+                "html": "<p>Hola {{1.attendees[].displayName}},</p><p>Te recordamos que tienes una cita <strong>manana</strong>:</p><p>📅 <strong>{{formatDate(1.start.dateTime; \"DD/MM/YYYY\")}}</strong><br>🕐 <strong>{{formatDate(1.start.dateTime; \"HH:mm\")}}</strong><br>✂️ {{1.summary}}</p><p>Si no puedes venir, por favor responde a este email o llamanos para cambiar la cita. ¡Asi podemos ofrecer tu hueco a otra persona!</p><p>¡Te esperamos!</p>"
+            },
+            "metadata": {
+                "designer": {"x": 300, "y": 0, "name": "2. Enviar recordatorio al cliente"},
+                "notes": "Envia el recordatorio. Puedes editar el texto del mensaje aqui directamente: cambia el texto entre las etiquetas, pero NO toques lo que va entre {{ llaves }}."
+            }
+        },
+        {
+            "id": 3,
+            "module": "google-sheets:addRow",
+            "version": 2,
+            "parameters": {},
+            "mapper": {
+                "values": {
+                    "0": "{{1.attendees[].displayName}}",
+                    "1": "{{1.attendees[].email}}",
+                    "2": "{{1.start.dateTime}}",
+                    "3": "Recordatorio 24h enviado",
+                    "4": "{{now}}"
+                },
+                "insertDataOption": "INSERT_ROWS",
+                "valueInputOption": "USER_ENTERED"
+            },
+            "metadata": {
+                "designer": {"x": 600, "y": 0, "name": "3. Registrar el recordatorio en el CRM"},
+                "notes": "Apunta en la pestana 'Registro' que el recordatorio se ha enviado."
+            }
+        }
+    ],
+    "metadata": {
+        "instant": false,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "confidential": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {"orphans": []},
+        "zone": "eu1.make.com"
+    }
+}

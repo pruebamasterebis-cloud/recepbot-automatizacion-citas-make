@@ -1,0 +1,76 @@
+{
+    "name": "RecepBot 3 - Pedir resena en Google tras la cita",
+    "flow": [
+        {
+            "id": 1,
+            "module": "google-calendar:searchEvents",
+            "version": 5,
+            "parameters": {},
+            "mapper": {
+                "calendar": "primary",
+                "timeMin": "{{addHours(now; -4)}}",
+                "timeMax": "{{addHours(now; -2)}}",
+                "singleEvents": true,
+                "orderBy": "startTime",
+                "limit": 50
+            },
+            "metadata": {
+                "designer": {"x": 0, "y": 0, "name": "1. Buscar citas que terminaron hace 2-4 horas"},
+                "notes": "Busca las citas que ya han pasado (hace entre 2 y 4 horas). Programa este escenario para ejecutarse CADA 2 HORAS, solo en horario comercial (ej. de 10:00 a 20:00)."
+            }
+        },
+        {
+            "id": 2,
+            "module": "google-email:ActionSendEmail",
+            "version": 2,
+            "parameters": {},
+            "mapper": {
+                "to": ["{{1.attendees[].email}}"],
+                "subject": "¿Que tal tu visita de hoy? ⭐",
+                "contentType": "html",
+                "html": "<p>Hola {{1.attendees[].displayName}},</p><p>¡Gracias por tu visita de hoy! Esperamos que todo fuera genial.</p><p>¿Nos harias un favor enorme? Tu opinion ayuda muchisimo a negocios pequenos como el nuestro. Solo te llevara 30 segundos:</p><p><a href=\"PEGA_AQUI_TU_ENLACE_DE_RESENAS_DE_GOOGLE\" style=\"background:#4285F4;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;\">⭐ Dejar mi resena en Google</a></p><p>¡Mil gracias y hasta pronto!</p>"
+            },
+            "metadata": {
+                "designer": {"x": 300, "y": 0, "name": "2. Enviar peticion de resena"},
+                "notes": "MUY IMPORTANTE: tienes que sustituir el texto PEGA_AQUI_TU_ENLACE_DE_RESENAS_DE_GOOGLE por el enlace real de resenas de tu negocio. La guia te explica como conseguirlo en 1 minuto."
+            }
+        },
+        {
+            "id": 3,
+            "module": "google-sheets:addRow",
+            "version": 2,
+            "parameters": {},
+            "mapper": {
+                "values": {
+                    "0": "{{1.attendees[].displayName}}",
+                    "1": "{{1.attendees[].email}}",
+                    "2": "{{1.start.dateTime}}",
+                    "3": "Peticion de resena enviada",
+                    "4": "{{now}}"
+                },
+                "insertDataOption": "INSERT_ROWS",
+                "valueInputOption": "USER_ENTERED"
+            },
+            "metadata": {
+                "designer": {"x": 600, "y": 0, "name": "3. Registrar en el CRM"},
+                "notes": "Apunta que se ha pedido la resena para no repetir."
+            }
+        }
+    ],
+    "metadata": {
+        "instant": false,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "confidential": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {"orphans": []},
+        "zone": "eu1.make.com"
+    }
+}
